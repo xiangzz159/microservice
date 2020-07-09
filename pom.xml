@@ -9,7 +9,10 @@
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
     <modules>
-        <module>dubbo-study</module>
+        <module>dubbo_frame</module>
+        <module>dubbo_service</module>
+        <module>dubbo_api</module>
+        <module>dubbo_customer</module>
     </modules>
 
 
