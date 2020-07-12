@@ -42,6 +42,7 @@ public class RpcLogAspect {
         String ip = RpcContext.getContext().getRemoteHost();
         // 服务url
         String rpcUrl = RpcContext.getContext().getUrl().getParameter("application");
+        endTime = System.currentTimeMillis();
         LOGGER.info("consumerSide={}, ip={}, url={}", consumerSide, ip, rpcUrl);
         return result;
     }
