@@ -1,9 +1,11 @@
-package com.study.demo.common.constant
+package com.study.demo.common.constant;
 
 /**
- * api系统接口结果常量枚举类
+ * @Author：xiangguangye
+ * @Desc：API系统接口常量枚举类
+ * @Date：2020/7/13 09:26
  */
-class ApiResultConstant {
+public enum ApiResultConstant {
     /**
      * 成功
      */
