@@ -24,7 +24,7 @@ public class DubboAdmin implements InitializingBean, ServletContextAware {
     @Override
     public void setServletContext(ServletContext servletContext) {
         LOGGER.info("===== 开始解压zheng-admin =====");
-        String version = PropertiesFileUtil.getInstance("zheng-admin-client").get("zheng.admin.version");
+        String version = PropertiesFileUtil.getInstance("zheng-admin-client").get("dubbo.admin.version");
         LOGGER.info("zheng-admin.jar 版本: {}", version);
         String jarPath = servletContext.getRealPath("/WEB-INF/lib/zheng-admin-" + version + ".jar");
         LOGGER.info("zheng-admin.jar 包路径: {}", jarPath);

@@ -21,14 +21,14 @@
     <dependencies>
         <dependency>
             <groupId>com.study</groupId>
-            <artifactId>dubbo-demo-common</artifactId>
+            <artifactId>dubbo-frame</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
     </dependencies>
 
     <build>
-        <finalName>dubbo-demo-common</finalName>
+        <finalName>dubbo-demo-rpc-api</finalName>
         <resources>
             <resource>
                 <directory>src/main/java</directory>
