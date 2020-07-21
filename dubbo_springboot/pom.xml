@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>dubbo-boot-api</module>
+        <module>dubbo-boot-service</module>
     </modules>
 
 
