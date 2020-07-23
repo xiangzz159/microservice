@@ -1,6 +1,5 @@
 package com.study.boot.service;
 
-import com.study.frame.base.BaseService;
 
 /**
  * @Author：xiangguangye

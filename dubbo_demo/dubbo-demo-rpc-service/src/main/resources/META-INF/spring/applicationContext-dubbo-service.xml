@@ -11,7 +11,7 @@
     <dubbo:protocol name="dubbo" port="20880"/>
 
 
-    <bean id="demoService" class="com.study.api.rpc.service.impl.DemoServiceImpl"/>
+    <bean id="demoService" class="com.study.api.service.impl.DemoServiceImpl"/>
     <dubbo:service interface="com.study.api.rpc.api.DemoService" ref="demoService" timeout="5000" retries="0" />
 
 </beans>

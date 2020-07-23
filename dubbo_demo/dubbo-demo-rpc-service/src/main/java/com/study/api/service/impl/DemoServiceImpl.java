@@ -1,4 +1,4 @@
-package com.study.api.rpc.service.impl;
+package com.study.api.service.impl;
 
 import com.study.api.rpc.api.DemoService;
 import org.slf4j.Logger;

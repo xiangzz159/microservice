@@ -5,134 +5,127 @@
     <parent>
         <artifactId>dubbo-springboot</artifactId>
         <groupId>com.study</groupId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.0.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-
     <artifactId>dubbo-boot-service</artifactId>
-
-    <packaging>jar</packaging>
-
-    <name>dubbo-boot-service</name>
-
-    <dependencies>
-        <dependency>
-            <groupId>com.study</groupId>
-            <artifactId>dubbo-boot-api</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
+    <properties>
+        <start-class>com.study.api.ServiceApplication</start-class>
+        <springboot-version>2.3.1.RELEASE</springboot-version>
+        <dubbo-spring-boot>1.0.0</dubbo-spring-boot>
+    </properties>
     <profiles>
         <profile>
-            <id>dev</id>
+            <id>test</id>
             <properties>
-                <env>dev</env>
+                <profileActive>test</profileActive>
+                <!-- dubbo -->
+                <dubbo.container>logback,spring</dubbo.container>
+                <dubbo.shutdown.hook>true</dubbo.shutdown.hook>
+                <dubbo.application.name>platform-system-provider</dubbo.application.name>
+                <dubbo.application.owner>zhangxudong</dubbo.application.owner>
+                <dubbo.registry.protocol>zookeeper</dubbo.registry.protocol>
+                <dubbo.registry.address>127.0.0.1:2181</dubbo.registry.address>
+                <dubbo.registry.client>curator</dubbo.registry.client>
+                <dubbo.registry.file>tmp/platform-system-provider.cache</dubbo.registry.file>
+                <dubbo.protocol.dubbo.port>20000</dubbo.protocol.dubbo.port>
+                <dubbo.application.logger>slf4j</dubbo.application.logger>
+                <dubbo.logback.level>info</dubbo.logback.level>
+                <dubbo.monitor.protocol> </dubbo.monitor.protocol>
             </properties>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
         </profile>
         <profile>
-            <id>test</id>
+            <id>dev</id>
             <properties>
-                <env>test</env>
+                <profileActive>dev</profileActive>
+                <!-- dubbo -->
+                <dubbo.container>logback,spring</dubbo.container>
+                <dubbo.shutdown.hook>true</dubbo.shutdown.hook>
+                <dubbo.application.name>platform-system-provider</dubbo.application.name>
+                <dubbo.application.owner>zhangxudong</dubbo.application.owner>
+                <dubbo.registry.protocol>zookeeper</dubbo.registry.protocol>
+                <dubbo.registry.address>127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183</dubbo.registry.address>
+                <dubbo.registry.client>curator</dubbo.registry.client>
+                <dubbo.registry.file>/data/zookeeper/platform-system-provider.cache</dubbo.registry.file>
+                <dubbo.protocol.dubbo.port>20000</dubbo.protocol.dubbo.port>
+                <dubbo.application.logger>slf4j</dubbo.application.logger>
+                <dubbo.logback.level>error</dubbo.logback.level>
+                <dubbo.monitor.protocol>registry</dubbo.monitor.protocol>
             </properties>
         </profile>
         <profile>
             <id>prod</id>
             <properties>
-                <env>prod</env>
+                <profileActive>prod</profileActive>
+                <!-- dubbo -->
+                <dubbo.container>logback,spring</dubbo.container>
+                <dubbo.shutdown.hook>true</dubbo.shutdown.hook>
+                <dubbo.application.name>platform-system-provider</dubbo.application.name>
+                <dubbo.application.owner>zhangxudong</dubbo.application.owner>
+                <dubbo.registry.protocol>zookeeper</dubbo.registry.protocol>
+                <dubbo.registry.address>127.0.0.1:2181,127.0.0.1:2182,127.0.0.1:2183</dubbo.registry.address>
+                <dubbo.registry.client>curator</dubbo.registry.client>
+                <dubbo.registry.file>/data/zookeeper/platform-system-provider.cache</dubbo.registry.file>
+                <dubbo.protocol.dubbo.port>20000</dubbo.protocol.dubbo.port>
+                <dubbo.application.logger>slf4j</dubbo.application.logger>
+                <dubbo.logback.level>error</dubbo.logback.level>
+                <dubbo.monitor.protocol>registry</dubbo.monitor.protocol>
             </properties>
         </profile>
     </profiles>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.study</groupId>
+            <artifactId>dubbo-boot-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>us.codecraft</groupId>
+            <artifactId>webmagic-core</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>us.codecraft</groupId>
+            <artifactId>webmagic-extension</artifactId>
+        </dependency>
+    </dependencies>
+
     <build>
-        <finalName>dubbo-boot-service</finalName>
-        <filters>
-            <filter>src/main/resources/profiles/${env}.properties</filter>
-        </filters>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-            <resource>
-                <directory>src/main/java</directory>
-                <includes>
-                    <include>**/*.xml</include>
-                    <include>**/*.properties</include>
-                </includes>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
+        <finalName>platform-system-provider</finalName>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <version>2.4</version>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>2.4</version>
-            </plugin>
-            <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <descriptor>src/main/assembly/assembly.xml</descriptor>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
-                <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.plexus</groupId>
-                        <artifactId>plexus-compiler-javac</artifactId>
-                        <version>1.8.1</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <plugin>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>2.6</version>
-                <configuration>
-                    <encoding>UTF-8</encoding>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.10</version>
-                <configuration>
-                    <skip>true</skip>
-                    <testFailureIgnore>true</testFailureIgnore>
-                </configuration>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
