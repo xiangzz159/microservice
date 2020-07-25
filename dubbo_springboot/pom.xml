@@ -10,6 +10,7 @@
     <modules>
         <module>dubbo-boot-api</module>
         <module>dubbo-boot-service</module>
+        <module>dubbo-boot-consumer</module>
     </modules>
     <name>dubbo-springboot</name>
 
