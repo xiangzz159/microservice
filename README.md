@@ -146,4 +146,19 @@ docker run -d -p 2181:2181 -h zookeeper --name zookeeper1 --restart always --pri
 # 进入zookeeper内部
 docker exec -it zookeeper1 ./bin/zkCli.sh
 ```
-    
+
+# SpringCloud组件
+## Euerka
+Euerka包含两个组件：Euerka Server和Euerka Client
+
+Euerka Server提供服务注册服务，各个节点启动后，会在EuerkaServer中进行注册，这样Euerka Server中的服务注册表中将会列出所有可用服务节点的信息，服务系欸但的信息可以在界面中直观的看到
+
+Euerka Client是一个Java客户端，用于简化EuerkaServer的交互，客户同时也具备一个内置的，使用轮询负载算法的负载均衡器。在应用启动后，将会向EuerkaServer发送心跳（默认周期为30s）。如果Euerka Server在多个心跳周期内没有接收到某个节点的心跳，EuerkaServer将会从服务注册表中把这个服务节点移除掉
+
+## 三大角色
+- Euerka Server：提供服务的注册发现
+- Euerka Provider：将自身服务注册到Eureka中，从而使消费方能够找到
+- Service Consumer：服务消费方从Eureka中获取注册服务列表，从而找到消费服务
+
+
+
