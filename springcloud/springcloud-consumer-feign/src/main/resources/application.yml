@@ -1,0 +1,33 @@
+server:
+  port: 80
+
+spring:
+  application:
+    name: springcloud-consumer-dept
+  security:
+    basic:
+      enabled: true
+    user:
+      name: root
+      password: root
+
+# Eureka的配置，服务注册到哪里
+eureka:
+  client:
+    register-with-eureka: false
+    service-url:
+      defaultZone: http://root:root@localhost:7001/eureka/
+  instance:
+    leaseRenewalIntervalInSeconds: 10
+    health-check-url-path: /actuator/health
+    metadata-map:
+      user.name: root
+      user.password: root
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: ALWAYS

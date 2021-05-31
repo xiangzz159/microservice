@@ -45,5 +45,5 @@ management:
       show-details: ALWAYS
 
 info:
-  app.name: xiang-springcloud-provider-8001
+  app.name: xiang-springcloud-provider-hystrix-8001
   company.name: blog.xiang.com
