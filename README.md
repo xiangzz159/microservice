@@ -149,27 +149,28 @@ docker exec -it zookeeper1 ./bin/zkCli.sh
 
 # SpringCloud组件
 ## Euerka(AP原则)
-Euerka包含两个组件：Euerka Server和Euerka Client
+服务启动后向Eureka注册，Eureka Server会将注册信息向其他Eureka Server进行同步，当服务消费者要调用服务提供者，则向服务注册中心获取服务提供者地址，然后会将服务提供者地址缓存在本地，下次再调用时，则直接从本地缓存中取，完成一次调用。
 
-Euerka Server提供服务注册服务，各个节点启动后，会在EuerkaServer中进行注册，这样Euerka Server中的服务注册表中将会列出所有可用服务节点的信息，服务系欸但的信息可以在界面中直观的看到
+当服务注册中心Eureka Server检测到服务提供者因为宕机、网络原因不可用时，则在服务注册中心将服务置为DOWN状态，并把当前服务提供者状态向订阅者发布，订阅过的服务消费者更新本地缓存。
 
-Euerka Client是一个Java客户端，用于简化EuerkaServer的交互，客户同时也具备一个内置的，使用轮询负载算法的负载均衡器。在应用启动后，将会向EuerkaServer发送心跳（默认周期为30s）。如果Euerka Server在多个心跳周期内没有接收到某个节点的心跳，EuerkaServer将会从服务注册表中把这个服务节点移除掉
+服务提供者在启动后，周期性（默认30秒）向Eureka Server发送心跳，以证明当前服务是可用状态。Eureka Server在一定的时间（默认90秒）未收到客户端的心跳，则认为服务宕机，注销该实例。
+
+### 自我保护机制
+在默认配置中，Eureka Server在默认90s没有得到客户端的心跳，则注销该实例，但是往往因为微服务跨进程调用，网络通信往往会面临着各种问题，比如微服务状态正常，但是因为网络分区故障时，Eureka Server注销服务实例则会让大部分微服务不可用，这很危险，因为服务明明没有问题。
+
+为了解决这个问题，Eureka 有自我保护机制，通过在Eureka Server配置如下参数，可启动保护机制。
+
+```shell script
+eureka.server.enable-self-preservation=true
+```
+
+它的原理是，当Eureka Server节点在短时间内丢失过多的客户端时（可能发送了网络故障），那么这个节点将进入自我保护模式，不再注销任何微服务，当网络故障回复后，该节点会自动退出自我保护模式。
+
 
 ### 三大角色
 - Euerka Server：提供服务的注册发现
 - Euerka Provider：将自身服务注册到Eureka中，从而使消费方能够找到
 - Service Consumer：服务消费方从Eureka中获取注册服务列表，从而找到消费服务
-
-### 自我保护机制
-某时刻某个服务不可用了，eureka不会立刻清理，依旧会对该微服务的信息进行保存。
-
-默认情况下，如果EurekaServer在一定时间内没有接收到某个服务实例的心跳，EurekaServer将会注销该实例（默认90s）。但是当网络分区故障发生时，微服务与Eureka之间无法正常通信，以上行为可能变得非常危险--因为微服务本身其实是健康的
-
-此时本不应该注销这个服务，Eureka通过自我保护机制来解决这个问题--当EurekaServer节点在短时间内丢失过多客户端时，那么这个节点就会进入自我保护模式。一旦进入该模式，EurekaServer就会保护服务注册表中的信息，不再删除服务注册表中的数据（不会删除任何微服务）。当王国故障恢复后，该EurekaServer节点会自动退出自我保护模式
-
-它的设计哲学就是宁可保留错误的服务注册信息，也不盲目注销任何可能健康的服务实例
-
-在SpringCloud中，可以使用eureka.server.enable-self-preservation = false禁用自我保护模式
 
 ### Zookeeper和Eureka对比
 #### CAP原则
@@ -185,15 +186,17 @@ Euerka Client是一个Java客户端，用于简化EuerkaServer的交互，客户
 - AP：通常可能对一致性要求低
 
 #### Zookeeper保证的是CP
-当向注册中心查询服务列表时，我们可以容忍注册中心返回的是几分钟以前的注册信息，但不能接受服务直接down掉不可用。也就是说，服务注册功能对可用性的要求要高于一致性。但是zk会出现这样一种情况，当master节点因为网络故障与其他节点失去连接时，剩余节点会重新进行leader选举。当选举时间过长时，整个选举期间整个zk集群是不可用的，这就导致在选举期间注册服务瘫痪。在云部署的情况下，因为网络问题使得zk集群失去master节点是较大概率会发生的事情，虽然服务最终能够回复，但是漫长的选举时间导致的注册长期不可用是不能容忍的。
+当向注册中心查询服务列表时，我们可以容忍注册中心返回的是几分钟以前的注册信息，但不能接受服务直接down掉不可用。也就是说，服务注册功能对可用性的要求要高于一致性。
+
+但是zk会出现这样一种情况，当master节点因为网络故障与其他节点失去连接时，剩余节点会重新进行leader选举。当选举时间过长时，整个选举期间整个zk集群是不可用的，这就导致在选举期间注册服务瘫痪。在云部署的情况下，因为网络问题使得zk集群失去master节点是较大概率会发生的事情，虽然服务最终能够回复，但是漫长的选举时间导致的注册长期不可用是不能容忍的。
 
 #### Eureka保证的是AP
-Eureka各个节点都是平等的，鸡哥节点挂掉不会影响正常节点的工作，剩余节点依然可以提供注册和查询。而Eureka的客户端在向某个Erureka注册时，如果发生连接失败，则会自动切换到其他节点，只要有一台Eureka还在，就能保证注册服务的可用性，只不过查到的信息可能不是最新的，除此之外，Eureka还有一种自我保护机制，如果在15分钟内超过85%的节点都没有正常的心跳，那么Eureka就认为客户端与注册中心出现了网络故障，此时会出现以下几种情况
-1. Eureka不再从注册列表中移除因为长时间没收到心跳而应该过期的服务
-2. Eureka仍然能够接受新服务的注册和查询请求，但是不会被同步到其他节点上
-3. 当网络稳定时，当前实例新的注册信息会被同步到其他节点中
+eureka优先保证可用性。在Eureka平台中，如果某台服务器宕机，Eureka不会有类似于ZooKeeper的选举leader的过程；客户端请求会自动切换 到新的Eureka节点；当宕机的服务器重新恢复后，Eureka会再次将其纳入到服务器集群管理之中；
 
-因此，Eureka可以恨到的应对因网络故障导致部分节点失去的情况，而不会像zk那样使整个注册服务瘫痪
+除此之外，Eureka还有一种自我保护机制，如果在15分钟内超过85%的节点都没有正常的心跳，那么Eureka就认为客户端与注册中心出现了网络故障，此时会出现以下几种情况：
+1. Eureka不再从注册列表中移除因为长时间没收到心跳而应该过期的服务
+2. Eureka仍然能够接受新服务的注册和查询请求，但是不会被同步到其它节点上(即保证当前节点依然可用)
+3. 当网络稳定时，当前实例新的注册信息会被同步到其它节点中Eureka还有客户端缓存功能（注：Eureka分为客户端程序与服务器端程序两个部分，客户端程序负责向外提供注册与发现服务接口）。 所以即便Eureka集群中所有节点都失效，或者发生网络分割故障导致客户端不能访问任何一台Eureka服务器；Eureka服务的消费者仍然可以通过 Eureka客户端缓存来获取现有的服务注册信息。甚至最极端的环境下，所有正常的Eureka节点都不对请求产生相应，也没有更好的服务器解决方案来解 决这种问题时；得益于Eureka的客户端缓存技术，消费者服务仍然可以通过Eureka客户端查询与获取注册服务信息。
 
 ## Ribbon(客户端负载均衡)
 提供客户端的软件负载均衡算法，将NetFlix的中间层服务连接在一起。
@@ -204,15 +207,43 @@ Eureka各个节点都是平等的，鸡哥节点挂掉不会影响正常节点�
    1. 将LB逻辑集成到消费方，消费方从服务注册中心获知有那些地址可用，然后自己在从这些地址中选出一个合适的服务器
    2. Ribbon就属于进程内LB，他只是一个类库，集成与消费方进程，消费方通过他来获取服务提供方的地址
    
+从LoadBalancerAutoConfiguration类上的注解可知，Ribbon实现负载均衡自动化配置需要满足下面两个条件：
+- @ConditionalOnClass(RestTemplate.class)：RestTemplate必须存在于当前工程的环境中。
+- @ConditionalOnBean(LoadBalancerClient.class)：在Spring的Bean工程中必须有LoadBalancerClient的实现bean。
+
+该自动配置类，主要做了下面三件事：
+- 创建了一个LoadBalancerInterceptor的Bean，用于实现对客户端发起请求时进行拦截，以实现客户端负载均衡。
+- 创建了一个RestTemplateCustomizer的Bean，用于给RestTemplate增加LoadbalancerInterceptor
+- 维护了一个被@LoadBalanced注解修饰的RestTemplate对象列表，并在这里进行初始化，通过调用RestTemplateCustomizer的实例来给需要客户端负载均衡的RestTemplate增加LoadBalancerInterceptor拦截器。
+
+通过源码以及之前的自动化配置类，我们可以看到在拦截器中注入了LoadBalancerInterceptor的实现。当一个被@LoadBalanced注解修饰的RestTemplate对象向外发起HTTP请求时，会被LoadBalancerInterceptor类的intercept函数所拦截。由于我们在使用RestTemplate时候采用了服务名作为host，所以直接从HttpRequest的URI对象中通过getHost()就可以拿到服务名，然后调用execute函数去根据服务名来选择实例并发起实际的请求。
+
+从RibbonClientConfiguration配置类，可以知道在整合时默认采用ZoneAvoidanceRule来实现负载均衡器。
+
+我们再回到RibbonLoadBalancer的execute函数逻辑，在通过ZoneAwareLoaderBalancer的chooseServer函数获取了负载均衡策略分配到的服务实例对象server之后，将其内容包装成RibbonServer对象（该对象除了存储了服务实例的信息之外，还增加了服务名serviceId、是否需要使用HTTPS等其他信息），然后使用该对象再回调LoadBalancerInterceptor请求拦截器中LoadBalancerRequest的apply(final ServiceInstance instance)函数，向一个实际的具体服务实例发起请求，从而实现一开始以服务名为host的URI请求，到实际的host:post形式的具体地址的转换。
+
+总结：它是如何通过LoadBalancerInterceptor拦截器对RequestTemplate的请求进行拦截，并利用Spring Cloud的负载均衡器LoadBalancerClient将以服务名为host的URI转换成具体的服务实例地址的过程。同时通过分析LoadBalancerClient的Ribbon实现RibbonLoadBalancerClient，可以知道在使用Ribbon实现负载均衡器的时候，实际使用的还是Ribbon中定义ILoadBalancer接口的实现，自动化配置会采用ZoneAwareLoadBalancer的实例来实现客户端负载均衡。
+
+### 负载均衡策略
+1. RoundRobinRule轮询：CAS保证线程安全
+2. RandomRule随机
+3. RetryRule轮询重试（重试采用的默认也是轮询）
+4. WeightedResponseTimeRule响应速度决定权重：
+5. BestAvailableRule最优可用（底层也有RoundRobinRule）：选择并发连接数较小的server发送请求。
+6. AvailabilityFilteringRule可用性过滤规则（底层也有RoundRobinRule）：先过滤掉不可用的Server实例，再选择并发连接最小的实例。
+7. ZoneAvoidanceRule区域内可用性能最优（默认）：基于AvailabilityFilteringRule基础上做的，首先判断一个zone的运行性能是否可用，剔除不可用的区域zone的所有server，然后再利用AvailabilityPredicate过滤并发连接过多的server。
+
+   
+   
 ## Feign负载均衡
 feign是声明式的web service客户端，类似于controller调用service，Spring Cloud集成了Ribbon和Eureka，可在使用Feign时提供负载均衡的http客户端
 
-feign主要是社区，大家都习惯面向接口变成。这个是很多开发人员的闺房。调用微服务访问两种方法
+feign主要是社区，大家都习惯面向接口变成。这个是很多开发人员的规范。调用微服务访问两种方法
 1. 微服务名字（ribbon）
 2. 接口和注解（feign）
    
 在使用Ribbon + RestTemplate时，利用RestTemplate对Http请求的封装处理，形成了一套模板化的调用方法，但是在实际开发中，由于对服务依赖的调用可能不止一处，往往一个接口会被多处调用，所以通常都会针对每个微服务自行封装一些客户端类来包装这些依赖服务的调用。所以，Feign在此基础上做了进一步封装，由他来帮助我们定义和实现依赖服务接口的定义。
-在Feign的实现下，我们只需要创建一个接口并使用注解的方式来配置他（类似于以前Dao接口上标注Mapper注解，现在是一个微服务接口上标注一个Feign注解即可）即可完成对服务提供方的接口半丁，简化了使用Spring Cloud Ribbon时，自动封装服务调用客户端的开发量
+在Feign的实现下，我们只需要创建一个接口并使用注解的方式来配置他（类似于以前Dao接口上标注Mapper注解，现在是一个微服务接口上标注一个Feign注解即可）即可完成对服务提供方的接口绑定，简化了使用Spring Cloud Ribbon时，自动封装服务调用客户端的开发量
 
 ## Hystrix
 Hystrix是一个用于处理分布式系统的延迟和容错的开源库，在分布式系统里，许多依赖不可避免的会调用失败，比如超时、异常等，Hystrix能够保证在一个依赖出问题的情况下，不会导致整个服务失败，避免级联故障，以提高分布式系统的弹性。
@@ -224,17 +255,71 @@ Hystrix是一个用于处理分布式系统的延迟和容错的开源库，在�
 - 服务限流
 - 接近事实的监控
 
+#### Hystrix整个工作流如下：
+
+1. 构造一个 HystrixCommand或HystrixObservableCommand对象，用于封装请求，并在构造方法配置请求被执行需要的参数；
+2. 执行命令，Hystrix提供了4种执行命令的方法，后面详述；
+    - execute():以同步堵塞方式执行run()，只支持接收一个值对象。hystrix会从线程池中取一个线程来执行run()，并等待返回值。
+    - queue():以异步非阻塞方式执行run()，只支持接收一个值对象。调用queue()就直接返回一个Future对象。可通过 Future.get()拿到run()的返回结果，但Future.get()是阻塞执行的。若执行成功，Future.get()返回单个返回值。当执行失败时，如果没有重写fallback，Future.get()抛出异常。
+    - observe():支持接收多个值对象，取决于发射源。调用observe()会返回一个hot Observable，也就是说，调用observe()自动触发执行run()/construct()，无论是否存在订阅者。
+    - toObservable():支持接收多个值对象，取决于发射源。调用toObservable()会返回一个cold Observable，也就是说，调用toObservable()不会立即触发执行run()/construct()，必须有订阅者订阅Observable时才会执行。
+3. 判断是否使用缓存响应请求，若启用了缓存，且缓存可用，直接使用缓存响应请求。Hystrix支持请求缓存，但需要用户自定义启动；
+4. 判断熔断器是否打开，如果打开，跳到第8步；
+5. 判断线程池/队列/信号量是否已满，已满则跳到第8步；
+6. 执行HystrixObservableCommand.construct()或HystrixCommand.run()，如果执行失败或者超时，跳到第8步；否则，跳到第9步；
+7. 统计熔断器监控指标；
+8. 走Fallback备用逻辑
+9. 返回请求响应
+
+从流程图上可知道，第5步线程池/队列/信号量已满时，还会执行第7步逻辑，更新熔断器统计信息，而第6步无论成功与否，都会更新熔断器统计信息。
+
+##### 几种方法的关系
+![img](./springcloud/img/112619_4Zx8_2663573.png)
+
+- execute()实际是调用了queue().get()
+- queue()实际调用了toObservable().toBlocking().toFuture()
+- observe()实际调用toObservable()获得一个cold Observable，再创建一个ReplaySubject对象订阅Observable，将源Observable转化为hot Observable。因此调用observe()会自动触发执行run()/construct()。
+
+Hystrix总是以Observable的形式作为响应返回，不同执行命令的方法只是进行了相应的转换。
+
+
 ### 服务雪崩
 复杂分布式体系结构中的应用程序有数十个依赖关系，每个依赖关系在某个时候将不可避免的失败！
 
 多个微服务之间调用的时候，假设微服务A调用微服务B和微服务C，微服务B和微服务C又调用其他的微服务，这就是所谓的"扇出"，如果扇出的链路上某个微服务的调用响应时间过长或者不可用，对微服务A的调用就会占用越来越多的系统资源，今儿引起系统奔溃，所谓的"服务雪崩"
 
-对于高流量的应用来说，歹意的后段依赖可能会导致所有服务器上的所有资源都在几秒内饱和。比失败更糟糕的是，这些应用程序还可能导致服务之间的延迟增加，备份队列，线程和其他系统资源紧张，导致整个系统发射管更多的级联故障，这些都表示需要对故障和延迟进行隔离和管理，以便单个依赖关系的失败，不能取消整个应用程序或系统。
+对于高流量的应用来说，歹意的后端依赖可能会导致所有服务器上的所有资源都在几秒内饱和。比失败更糟糕的是，这些应用程序还可能导致服务之间的延迟增加，备份队列，线程和其他系统资源紧张，导致整个系统发射管更多的级联故障，这些都表示需要对故障和延迟进行隔离和管理，以便单个依赖关系的失败，不能取消整个应用程序或系统。
 
 ### 服务熔断（服务端）
-当某个服务不可用或长时间无响应时，会进行服务的降级，今儿熔断该节点微服务的调用，快速返回错误信息。Hystrix会监控微服务间调用的状况，当失败的调用到一定的阈值，缺省是5s内20次调用失败就会启动熔断机制，熔断机制的注解是@HystrixCommand
+当某个服务不可用或长时间无响应时，会进行服务的降级，并禁止该节点微服务的调用，快速返回错误信息。Hystrix会监控微服务间调用的状况，当失败的调用到一定的阈值，缺省是5s内20次调用失败就会启动熔断机制，熔断机制的注解是@HystrixCommand
+
+1. 调用allowRequest()判断是否允许将请求提交到线程池
+    - 如果熔断器强制打开，circuitBreaker.forceOpen为true，不允许放行，返回。
+    - 如果熔断器强制关闭，circuitBreaker.forceClosed为true，允许放行。此外不必关注熔断器实际状态，也就是说熔断器仍然会维护统计数据和开关状态，只是不生效而已。
+2. 调用isOpen()判断熔断器开关是否打开
+    - 如果熔断器开关打开，进入第三步，否则继续；
+    - 如果一个周期内总的请求数小于circuitBreaker.requestVolumeThreshold的值，允许请求放行，否则继续；
+    - 如果一个周期内错误率小于circuitBreaker.errorThresholdPercentage的值，允许请求放行。否则，打开熔断器开关，进入第三步。
+3. 调用allowSingleTest()判断是否允许单个请求通行，检查依赖服务是否恢复
+    - 如果熔断器打开，且距离熔断器打开的时间或上一次试探请求放行的时间超过circuitBreaker.sleepWindowInMilliseconds的值时，熔断器器进入半开状态，允许放行一个试探请求；否则，不允许放行。
 
 ### 服务降级（客户端）
+降级，通常指务高峰期，为了保证核心服务正常运行，需要停掉一些不太重要的业务，或者某些服务不可用时，执行备用逻辑从故障服务中快速失败或快速返回，以保障主体业务不受影响。Hystrix提供的降级主要是为了容错，保证当前服务不受依赖服务故障的影响，从而提高服务的健壮性。要支持回退或降级处理，可以重写HystrixCommand的getFallBack方法或HystrixObservableCommand的resumeWithFallback方法。
+
+Hystrix在以下几种情况下会走降级逻辑：
+- 执行construct()或run()抛出异常
+- 熔断器打开导致命令短路
+- 命令的线程池和队列或信号量的容量超额，命令被拒绝
+- 命令执行超时
+
+#### 降级回退方式
+- Fail Fast 快速失败:快速失败是最普通的命令执行方法，命令没有重写降级逻辑。 如果命令执行发生任何类型的故障，它将直接抛出异常。              
+- Fail Silent 无声失败:指在降级方法中通过返回null，空Map，空List或其他类似的响应来完成。
+- Fallback: Static:指在降级方法中返回静态默认值。 这不会导致服务以“无声失败”的方式被删除，而是导致默认行为发生。如：应用根据命令执行返回true / false执行相应逻辑，但命令执行失败，则默认为true
+- Fallback: Stubbed:当命令返回一个包含多个字段的复合对象时，适合以Stubbed 的方式回退。
+- Fallback: Cache via Network:有时，如果调用依赖服务失败，可以从缓存服务（如redis）中查询旧数据版本。由于又会发起远程调用，所以建议重新封装一个Command，使用不同的ThreadPoolKey，与主线程池进行隔离。
+- Primary + Secondary with Fallback
+
 
 ## Zuul（路由网关）
 Zuul包含对请求的路由和过滤
@@ -243,6 +328,15 @@ Zuul包含对请求的路由和过滤
 
 > Zuul服务最终还是会注册到Eureka中
 > 提供：代理 + 路由 + 过滤 三大功能
+
+所有从设备或网站来的请求都会经过Zuul到达后端的Netflix应用程序。作为一个边界性质的应用程序，Zuul提供了动态路由、监控、弹性负载和安全功能。Zuul底层利用各种filter实现如下功能：
+- 认证和安全 识别每个需要认证的资源，拒绝不符合要求的请求。
+- 性能监测 在服务边界追踪并统计数据，提供精确的生产视图。
+- 动态路由 根据需要将请求动态路由到后端集群。
+- 压力测试 逐渐增加对集群的流量以了解其性能。
+- 负载卸载 预先为每种类型的请求分配容量，当请求超过容量时自动丢弃。
+- 静态资源处理 直接在边界返回某些响应。
+
 
 ## config（分布式配置）
 微服务意味着要将单体应用中的业务拆分成一个个子服务，每个服务的粒度相对较小，因此系统中会出现大量的服务，由于每个服务都需要必要的配置信息才能运行，所以一套集中式的，动态的配置管理设施是必不可少的。SpringCloud提供了ConfigServer来解决这个问题，我们每一个微服务自己带着一个application.yml，那上百的配置文件修改起来是很困难的。
