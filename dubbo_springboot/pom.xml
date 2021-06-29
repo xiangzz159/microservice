@@ -9,7 +9,7 @@
     <version>1.0.0-SNAPSHOT</version>
     <modules>
         <module>dubbo-boot-api</module>
-        <module>dubbo-boot-service</module>
+        <module>dubbo-boot-provider</module>
         <module>dubbo-boot-consumer</module>
     </modules>
     <name>dubbo-springboot</name>

@@ -9,9 +9,8 @@
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
     <modules>
-        <module>dubbo_frame</module>
-        <module>dubbo_demo</module>
         <module>dubbo_springboot</module>
+        <module>springcloud</module>
     </modules>
 
 
